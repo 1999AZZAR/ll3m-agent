@@ -1,32 +1,25 @@
-# LL3M Agent Skill (v3.0)
+# LL3M Agent Skill (v3.1)
 
-Expert 3D modeling assistant utilizing the LL3M (Large Language 3D Modelers) framework within Blender.
+Unified interface for high-end autonomous 3D modeling in Blender.
 
-## Core Capabilities
+## Core Multi-Agent Workflow
+1.  **PLAN**: `generate_modeling_plan` -> Architect the scene components.
+2.  **RETRIEVE**: `get_api_docs` -> Fetch exact `bpy` signatures and code examples from the local RAG.
+3.  **WRITE**: `get_agent_instructions(agent="writer")` -> Generate modular Python scripts.
+4.  **EXECUTE**: `execute_blender_code` -> Send scripts to Blender.
+5.  **CRITIQUE**: `get_screenshot` / `render_output` -> Visual verification.
+6.  **DEBUG**: `get_agent_instructions(agent="debugger")` -> Fix errors found in tracebacks.
 
-This skill provides a unified interface for autonomous 3D asset generation, scene inspection, and visual refinement.
+## Advanced Scene Inspection
+- **`get_scene_summary`**: List objects, collections, modes, and active selection.
+- **`get_object_details`**: Technical breakdown of mesh data, materials, and modifiers.
+- **`get_blendfile_summary`**: Inspect datablocks, path info, and missing files.
 
-### 1. Modeling Workflow
-Follow the Multi-Agent loop to ensure high-quality, physically plausible results:
-- **PLAN**: Use `generate_modeling_plan` to architect the object.
-- **RETRIEVE**: Use `get_api_docs` to get exact `bpy` signatures. Never guess the API.
-- **WRITE**: Generate modular code using the `get_agent_instructions(agent="writer")` persona.
-- **EXECUTE**: Run in Blender via `execute_blender_code`.
-- **CRITIQUE**: Use `get_screenshot` or `render_viewport` to verify visually. Refine using the `debugger` persona.
+## Navigation & Persistence
+- **`navigation`**: Jump to specific tabs or focus the 3D view on an object.
+- **`save_blend`**: Persist the session or save a copy of the scene.
 
-### 2. Scene Management
-- **`get_scene_summary`**: Use this at the start of any session to understand the current context (active objects, layers, collections).
-- **`get_object_details`**: Inspect a specific object's mesh data, materials, and modifiers.
-- **`save_blend`**: Persist your progress to a file.
-
-### 3. Visual Feedback
-- **Screenshots**: High-speed viewport capture (base64).
-- **Rendering**: Full-quality image output (path-based).
-
-## Technical Standards
-- **Design Language**: Material You, Minimalism, Glassmorphism.
-- **Color Palettes**: Pastel-focused.
-- **Code Style**: Modular functions, `bmesh` for mesh editing, Geometry Nodes for procedurality.
-
-## Agnostic Usage
-Any LLM-based agent can utilize this skill by calling the associated `ll3m` tools. The server is 100% local and does not depend on external cloud services.
+## Design Standards
+- **Style**: Minimalism, Cyberpunk, Glassmorphism, Material You.
+- **Colors**: Pastel palettes.
+- **Code**: `bmesh` for geometry, Shader Nodes for materials, Geometry Nodes for procedurality.
