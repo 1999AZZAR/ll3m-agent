@@ -14,7 +14,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Paths relative to dist/ or src/
 const BODY_PATH = path.join(__dirname, "../../body");
-const BLENDER_MCP_DATA = path.join(BODY_PATH, "mcp/blmcp/data/api");
 const TOOLS_CODE_PATH = path.join(BODY_PATH, "mcp/blmcp/tools");
 const PYTHON_INTERPRETER = path.join(BODY_PATH, "venv/bin/python3");
 const API_BRIDGE_PATH = path.join(__dirname, "api_docs_bridge.py");
@@ -26,8 +25,8 @@ const BLENDER_PORT = 9876;
 const server = new Server(
   {
     name: "ll3m-agent-server",
-    version: "3.0.0",
-    description: "Unified LL3M Agent with Integrated Blender Control & RAG",
+    version: "3.1.0",
+    description: "Professional LL3M Agent: Full Blender Control & Advanced RAG",
   },
   {
     capabilities: {
@@ -90,13 +89,11 @@ async function runBodyTool(toolName: string, params: any = null): Promise<any> {
     const filePath = path.join(TOOLS_CODE_PATH, `${toolName}_toolcode.py`);
     let code = await fs.readFile(filePath, "utf8");
     
-    // Inject templates or dependencies if needed (Simplification: we assume they are standalone or we use simple injection)
     const paramsJson = JSON.stringify(params);
     code += `
 import json
 try:
     params_dict = json.loads('${paramsJson}')
-    # Simple check for Params class
     if 'Params' in locals() or 'Params' in globals():
         p = Params(**params_dict)
     else:
@@ -129,8 +126,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_api_docs",
-        description: "Get precise Blender Python API documentation and examples.",
-        inputSchema: { type: "object", properties: { identifier: { type: "string", description: "Fully qualified name, e.g., 'bpy.types.Scene'" } }, required: ["identifier"] },
+        description: "Advanced Blender Python API RAG: Get precise documentation, examples, and signatures.",
+        inputSchema: { type: "object", properties: { identifier: { type: "string", description: "fully-qualified name, e.g. 'bpy.types.Scene', or '*' for module list." } }, required: ["identifier"] },
       },
       {
         name: "execute_blender_code",
@@ -139,28 +136,45 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_scene_summary",
-        description: "List all objects, collections, and active state in the scene.",
+        description: "Comprehensive scene map: objects, collections, modes, and active selection.",
         inputSchema: { type: "object", properties: {} },
       },
       {
         name: "get_object_details",
-        description: "Get technical details of a specific object.",
+        description: "Deep dive into an object's mesh, materials, modifiers, and animation status.",
         inputSchema: { type: "object", properties: { object_name: { type: "string" } }, required: ["object_name"] },
       },
       {
-        name: "render_viewport",
-        description: "Quick render of current viewport to a file.",
-        inputSchema: { type: "object", properties: { output_path: { type: "string" } } },
+        name: "get_blendfile_summary",
+        description: "Detailed summary of the .blend file (datablocks, missing files, linked libraries).",
+        inputSchema: { type: "object", properties: { type: { type: "string", enum: ["datablocks", "missing_files", "linked_libraries", "path_info", "usage_guess"] } }, required: ["type"] },
+      },
+      {
+        name: "render_output",
+        description: "Render the current scene or viewport.",
+        inputSchema: { type: "object", properties: { type: { type: "string", enum: ["viewport", "thumbnail"] }, output_path: { type: "string" } }, required: ["type"] },
       },
       {
         name: "save_blend",
-        description: "Save current .blend file.",
-        inputSchema: { type: "object", properties: { filepath: { type: "string" } }, required: ["filepath"] },
+        description: "Save current Blender file or a copy.",
+        inputSchema: { type: "object", properties: { filepath: { type: "string" }, as_copy: { type: "boolean", default: false } }, required: ["filepath"] },
       },
       {
         name: "get_screenshot",
-        description: "Capture a screenshot of the Blender window (returns base64).",
+        description: "Capture high-speed viewport screenshot (returns base64).",
         inputSchema: { type: "object", properties: {} },
+      },
+      {
+        name: "navigation",
+        description: "Jump to a specific tab, workspace, or focus an object in the 3D view.",
+        inputSchema: { 
+            type: "object", 
+            properties: { 
+                action: { type: "string", enum: ["jump_to_tab", "focus_object", "focus_data"] },
+                name: { type: "string", description: "Name of tab/object/data" }
+            }, 
+            required: ["action", "name"] 
+        },
       }
     ],
   };
@@ -202,19 +216,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const objRes = await runBodyTool("get_object_detail_summary", { object_name: args?.object_name });
         return { content: [{ type: "text", text: JSON.stringify(objRes, null, 2) }] };
 
-    case "render_viewport":
-        const rendRes = await runBodyTool("render_viewport_to_path", { output_path: args?.output_path || "render.png" });
+    case "get_blendfile_summary":
+        const blendRes = await runBodyTool(`get_blendfile_summary_${args?.type}`);
+        return { content: [{ type: "text", text: JSON.stringify(blendRes, null, 2) }] };
+
+    case "render_output":
+        const tool = args?.type === "viewport" ? "render_viewport_to_path" : "render_thumbnail_to_path";
+        const rendRes = await runBodyTool(tool, { output_path: args?.output_path || "render.png" });
         return { content: [{ type: "text", text: JSON.stringify(rendRes, null, 2) }] };
 
     case "save_blend":
-        const saveCode = `import bpy; bpy.ops.wm.save_as_mainfile(filepath='${args?.filepath}')\nresult={"status":"saved"}`;
+        const copyFlag = args?.as_copy ? ", copy=True" : "";
+        const saveCode = `import bpy; bpy.ops.wm.save_as_mainfile(filepath='${args?.filepath}'${copyFlag})\nresult={"status":"saved"}`;
         const saveRes = await sendToBlender(saveCode, true);
         return { content: [{ type: "text", text: JSON.stringify(saveRes, null, 2) }] };
 
     case "get_screenshot":
-        // Using window screenshot toolcode
         const screenRes = await runBodyTool("get_screenshot_of_window_as_image");
         return { content: [{ type: "text", text: JSON.stringify(screenRes, null, 2) }] };
+
+    case "navigation":
+        let navTool = "";
+        if (args?.action === "jump_to_tab") navTool = "jump_to_tab_by_name";
+        else if (args?.action === "focus_object") navTool = "jump_to_view3d_object_by_name";
+        else navTool = "jump_to_view3d_object_data_by_name";
+        const navRes = await runBodyTool(navTool, { name: args?.name });
+        return { content: [{ type: "text", text: JSON.stringify(navRes, null, 2) }] };
 
     default:
       throw new Error("Tool not found");
