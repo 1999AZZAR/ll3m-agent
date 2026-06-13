@@ -1,55 +1,58 @@
-# LL3M Agent (Monorepo) v3.1
+# LL3M Agent (Monorepo)
 
-Autonomous 3D modeling agent stack for **Blender**, powered by the **Model Context Protocol (MCP)**. 
+A unified autonomous 3D modeling system for Blender, built on the Model Context Protocol (MCP).
 
-This project integrates the local execution power of Blender with the multi-agent reasoning framework described in the **LL3M** paper, providing a unified "Brain and Body" for high-end 3D asset generation and scene management.
+This project integrates the multi-agent reasoning framework from the LL3M research with a local Blender execution bridge. It provides a production-ready stack for generating 3D assets, inspecting scene hierarchies, and performing iterative refinements via natural language.
 
-## 🚀 Main Idea & Sources
+## Architecture and Origins
 
-- **Primary Source**: [LL3M (Large Language 3D Modelers)](https://github.com/threedle/ll3m) - A multi-agent framework for generating 3D assets via code.
-- **Platform Vision**: [Blender Lab: MCP Server](https://www.blender.org/lab/mcp-server/) - The official vision for Blender as an AI-enabled creative tool.
+The system is derived from two foundational concepts:
+- **LL3M (Large Language 3D Modelers)**: A multi-agent methodology for 3D generation through interpretable Python code. [Source](https://github.com/threedle/ll3m)
+- **Blender Lab MCP**: The official vision for exposing Blender as a tool for large language models. [Documentation](https://www.blender.org/lab/mcp-server/)
 
-## ✨ Key Features (v3.1)
+## System Capabilities (v3.1)
 
-### 🧠 Unified Modeling Brain
-- **Multi-Agent Workflow**: Built-in personas for **Planner**, **Writer**, and **Debugger** roles.
-- **Advanced local RAG**: A sophisticated Python-based RST parser that provides agents with precise Blender API signatures, documentation, and real-world code examples.
-- **Cloud-Independent**: 100% local execution. No dependency on retired external servers.
+### Autonomous Modeling Pipeline
+The system implements a structured multi-agent loop to ensure geometric and physical accuracy:
+- **Planner**: Decomposes natural language requests into discrete geometric components and spatial requirements.
+- **Writer**: Translates modeling plans into modular Python scripts utilizing `bpy` and `bmesh`.
+- **Debugger**: Analyzes execution tracebacks and visual feedback to perform automated error correction.
 
-### 🛠️ High-Level Tooling
-- **Scene Mapping**: `get_scene_summary` provides a complete hierarchical map of collections, objects, and active states.
-- **Object Inspection**: `get_object_details` offers deep technical dives into mesh data, material slots, and modifiers.
-- **File Intelligence**: `get_blendfile_summary` reports on datablocks, missing external assets, and linked libraries.
+### Local Retrieval-Augmented Generation (RAG)
+Integrated Python-based RST parser that provides agents with:
+- Fully qualified API signatures for `bpy` and `bmesh`.
+- Contextual usage examples extracted from official documentation.
+- Automatic truncation and navigation for large module references.
 
-### 👁️ Visual Intelligence
-- **High-Speed Screenshots**: Instant base64 viewport capture for real-time agent feedback.
-- **Production Rendering**: Dedicated tools for viewport renders and thumbnail generation.
+### Scene and Object Intelligence
+- **Hierarchical Summarization**: Detailed mapping of collections, object visibility, and active selection states.
+- **Technical Inspection**: Direct access to mesh data, material node trees, and modifier stacks.
+- **Visual Feedback**: Real-time viewport screenshot capture and high-resolution background rendering.
 
-### 🕹️ UI Navigation
-- **Workspace Control**: Agents can "jump" the Blender UI to specific tabs (Shading, Geometry Nodes, etc.).
-- **Viewport Focus**: Automatically center the 3D view on any specific object.
+## Repository Structure
 
-## 📁 Structure
+- `/brain`: Node.js/TypeScript MCP server handling agent orchestration and documentation retrieval.
+- `/body`: Python environment containing the Blender bridge, modeling tools, and full API RAG dataset.
+- `/skill`: Gemini CLI skill definition for managing the autonomous workflow.
 
-- **`brain/`**: Node.js MCP server (TypeScript). The central orchestrator for RAG, Planning, and Execution.
-- **`body/`**: Python component containing the Blender execution bridge, specialized modeling tools, and the full Blender API documentation set.
-- **`skill/`**: Gemini CLI Skill definition to enable the autonomous modeling loop.
+## Installation and Setup
 
-## ⚙️ Setup
+### 1. MCP Configuration
+Register the server in your configuration (e.g., `~/.claude.json`):
+```json
+"ll3m": {
+  "command": "node",
+  "args": ["/path/to/ll3m-agent/brain/dist/index.js"]
+}
+```
 
-1.  **Configuration**: Add the `ll3m` server to your MCP config (e.g., `~/.claude.json`):
-    ```json
-    "ll3m": {
-      "command": "node",
-      "args": ["/path/to/ll3m-agent/brain/dist/index.js"]
-    }
-    ```
-2.  **Blender Addon**: Install the addon from `body/addon/blender_mcp_addon/` (or use the root `.zip`).
-3.  **Activation**: Click **"Start Server"** in the Blender addon preferences (Port 9876).
+### 2. Blender Add-on
+- Install the add-on located in `body/addon/blender_mcp_addon/`.
+- Enable "Start Server" within the add-on preferences (Default Port: 9876).
 
-## 🎮 Usage
+## Operation
 
-Simply provide a natural language request to your agent:
-> *"Create a minimalist cyberpunk lounge with a glass table and a neon bookshelf"*
+Execute the modeling loop by providing a technical or descriptive request:
+> "Use the ll3m-agent skill to generate a minimalist industrial interior with a glass-top table."
 
-The agent will follow the verified LL3M loop: **PLAN** → **RETRIEVE** → **WRITE** → **EXECUTE** → **CRITIQUE**.
+The system will proceed through the PLAN → RETRIEVE → WRITE → EXECUTE cycle automatically.
