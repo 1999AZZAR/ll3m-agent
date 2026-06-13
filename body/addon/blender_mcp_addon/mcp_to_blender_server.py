@@ -212,19 +212,20 @@ def _execute_code(
 ) -> _ExecResult:
     """
     Execute *code* and return an ``_ExecResult``.
-
-    :param strict_json: When true, the response *must* be serializable.
-        Should always be true, when executing Python code we have full-control over,
-        because any non-serializable data is effectively a bug.
-
-        Only allow it to be false when executing arbitrary LLM generated code,
-        in this case it's not worth the overhead of correcting the LLM mistake,
-        just ``__repr__`` the value so it can fumble its way forward.
     """
     from .capture_output import CaptureOutput
     from .weak_sandbox import WeakSandboxForLLM
+    from . import blmcp_helpers
 
-    namespace: dict[str, object] = {"result": {}}
+    # Provide common modules and helpers in the namespace to prevent 'undefined' errors
+    namespace: dict[str, object] = {
+        "result": {},
+        "bpy": bpy,
+        "bmesh": bmesh,
+        "math": math,
+        "helpers": blmcp_helpers,
+    }
+    
     with CaptureOutput() as captured, WeakSandboxForLLM():
         try:
             exec(code, namespace)
