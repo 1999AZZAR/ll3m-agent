@@ -27,8 +27,8 @@ const BLENDER_PORT = 9876;
 const server = new Server(
   {
     name: "ll3m-agent-server",
-    version: "3.2.0",
-    description: "Professional LL3M Agent: High-Fidelity Modeling & Advanced RAG",
+    version: "3.3.0",
+    description: "Professional LL3M Agent: Production-Grade Blender Control & Helpers",
   },
   {
     capabilities: {
@@ -143,6 +143,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "get_blender_helpers",
+        description: "Retrieve a list of high-level Python helper functions available in the Blender environment (e.g., setup_pbr, apply_subd).",
+        inputSchema: { type: "object", properties: {} },
+      },
+      {
         name: "execute_blender_code",
         description: "Execute arbitrary Python code in Blender.",
         inputSchema: { type: "object", properties: { code: { type: "string" }, strict_json: { type: "boolean" } }, required: ["code"] },
@@ -219,6 +224,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             return { content: [{ type: "text", text: patternContent }] };
         } catch (e: any) {
             return { content: [{ type: "text", text: "Error fetching pattern: " + e.message }] };
+        }
+
+    case "get_blender_helpers":
+        try {
+            const helperPath = path.join(BODY_PATH, "addon/blender_mcp_addon/blmcp_helpers.py");
+            const helpers = await fs.readFile(helperPath, "utf8");
+            return { content: [{ type: "text", text: "Available high-level Python helpers:\n\n" + helpers }] };
+        } catch (e: any) {
+            return { content: [{ type: "text", text: "Error fetching helpers: " + e.message }] };
         }
 
     case "execute_blender_code":
