@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/agents dist/ && cp -r src/rag dist/ && cp src/*.py dist/ 2>/dev/null || true",
     "start": "node dist/index.js"
   },
   "dependencies": {
