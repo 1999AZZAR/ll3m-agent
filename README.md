@@ -2,6 +2,8 @@
 
 A unified autonomous 3D modeling system for Blender, built on the Model Context Protocol (MCP).
 
+[![LL3M Agent Demo](https://img.youtube.com/vi/BnbDg1-be4g/0.jpg)](https://www.youtube.com/watch?v=BnbDg1-be4g)
+
 This project integrates the multi-agent reasoning framework from the LL3M research with a local Blender execution bridge. It provides a production-ready stack for generating 3D assets, inspecting scene hierarchies, and performing iterative refinements via natural language.
 
 ## Architecture and Origins
