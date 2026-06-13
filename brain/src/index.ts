@@ -14,6 +14,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Paths relative to dist/ or src/
 const BODY_PATH = path.join(__dirname, "../../body");
+const BLENDER_MCP_DATA = path.join(BODY_PATH, "mcp/blmcp/data/api");
+const PATTERNS_PATH = path.join(BODY_PATH, "mcp/blmcp/data/patterns");
 const TOOLS_CODE_PATH = path.join(BODY_PATH, "mcp/blmcp/tools");
 const PYTHON_INTERPRETER = path.join(BODY_PATH, "venv/bin/python3");
 const API_BRIDGE_PATH = path.join(__dirname, "api_docs_bridge.py");
@@ -25,8 +27,8 @@ const BLENDER_PORT = 9876;
 const server = new Server(
   {
     name: "ll3m-agent-server",
-    version: "3.1.0",
-    description: "Professional LL3M Agent: Full Blender Control & Advanced RAG",
+    version: "3.2.0",
+    description: "Professional LL3M Agent: High-Fidelity Modeling & Advanced RAG",
   },
   {
     capabilities: {
@@ -116,7 +118,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     tools: [
       {
         name: "generate_modeling_plan",
-        description: "Generate a multi-component 3D modeling plan.",
+        description: "Generate a multi-component 3D modeling plan with high-fidelity mandates.",
         inputSchema: { type: "object", properties: { prompt: { type: "string" } }, required: ["prompt"] },
       },
       {
@@ -128,6 +130,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         name: "get_api_docs",
         description: "Advanced Blender Python API RAG: Get precise documentation, examples, and signatures.",
         inputSchema: { type: "object", properties: { identifier: { type: "string", description: "fully-qualified name, e.g. 'bpy.types.Scene', or '*' for module list." } }, required: ["identifier"] },
+      },
+      {
+        name: "get_modeling_patterns",
+        description: "Retrieve high-fidelity modeling blueprints (e.g., rounded corners, SubD topology).",
+        inputSchema: { 
+            type: "object", 
+            properties: { 
+                category: { type: "string", enum: ["rounded_corners", "ergonomic_curves", "subd_topology", "realistic_materials"] } 
+            }, 
+            required: ["category"] 
+        },
       },
       {
         name: "execute_blender_code",
@@ -199,6 +212,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       } catch (e: any) {
         return { content: [{ type: "text", text: "Error fetching docs: " + e.message }] };
       }
+
+    case "get_modeling_patterns":
+        try {
+            const patternContent = await fs.readFile(path.join(PATTERNS_PATH, `${args?.category}.md`), "utf8");
+            return { content: [{ type: "text", text: patternContent }] };
+        } catch (e: any) {
+            return { content: [{ type: "text", text: "Error fetching pattern: " + e.message }] };
+        }
 
     case "execute_blender_code":
         try {
