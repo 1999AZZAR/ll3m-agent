@@ -27,8 +27,8 @@ const BLENDER_PORT = 9876;
 const server = new Server(
   {
     name: "ll3m-agent-server",
-    version: "4.0.0",
-    description: "Staged Inverse Graphics LL3M Agent: Physics-Verified Perfect Clones",
+    version: "4.2.0",
+    description: "Recursive Staged Inverse Graphics LL3M Agent: Perfect Clone Loop",
   },
   {
     capabilities: {
@@ -207,7 +207,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "execute_staged_refinement",
-        description: "Execute a technical Geometric Delta list of code-level fixes provided by the Critic.",
+        description: "Execute a technical Geometric Delta provided by the Critic. Use this recursively until the Quality Score reaches 90+.",
         inputSchema: { 
             type: "object", 
             properties: { 
@@ -215,7 +215,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             }, 
             required: ["delta_instructions"] 
         },
-      }
+      },
+
     ],
   };
 });
