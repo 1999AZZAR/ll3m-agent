@@ -27,8 +27,8 @@ const BLENDER_PORT = 9876;
 const server = new Server(
   {
     name: "ll3m-agent-server",
-    version: "3.3.0",
-    description: "Professional LL3M Agent: Production-Grade Blender Control & Helpers",
+    version: "4.0.0",
+    description: "Staged Inverse Graphics LL3M Agent: Physics-Verified Perfect Clones",
   },
   {
     capabilities: {
@@ -123,8 +123,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "get_agent_instructions",
-        description: "Retrieve specialized persona instructions (planner/writer/debugger).",
-        inputSchema: { type: "object", properties: { agent: { type: "string", enum: ["planner", "writer", "debugger"] } }, required: ["agent"] },
+        description: "Retrieve specialized persona instructions (planner/writer/debugger/critic).",
+        inputSchema: { type: "object", properties: { agent: { type: "string", enum: ["planner", "writer", "debugger", "critic"] } }, required: ["agent"] },
       },
       {
         name: "get_api_docs",
@@ -192,6 +192,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 name: { type: "string", description: "Name of tab/object/data" }
             }, 
             required: ["action", "name"] 
+        },
+      },
+      {
+        name: "execute_staged_refinement",
+        description: "Execute a technical Geometric Delta list of code-level fixes provided by the Critic.",
+        inputSchema: { 
+            type: "object", 
+            properties: { 
+                delta_instructions: { type: "string", description: "Technical instructions for refinements." } 
+            }, 
+            required: ["delta_instructions"] 
         },
       }
     ],
@@ -277,6 +288,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         else navTool = "jump_to_view3d_object_data_by_name";
         const navRes = await runBodyTool(navTool, { name: args?.name });
         return { content: [{ type: "text", text: JSON.stringify(navRes, null, 2) }] };
+
+    case "execute_staged_refinement":
+        try {
+            // This tool takes Critic deltas (Python code snippets) and executes them in a clean namespace
+            const result = await sendToBlender(args?.delta_instructions as string, true);
+            return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+        } catch (e: any) {
+            return { content: [{ type: "text", text: "Error during refinement: " + e.message }] };
+        }
 
     default:
       throw new Error("Tool not found");
