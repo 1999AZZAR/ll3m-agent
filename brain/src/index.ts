@@ -183,6 +183,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         inputSchema: { type: "object", properties: {} },
       },
       {
+        name: "get_fast_feedback",
+        description: "Capture a low-resolution, high-speed Workbench screenshot for agent self-criticism.",
+        inputSchema: { 
+            type: "object", 
+            properties: { 
+                output_path: { type: "string" },
+                resolution_scale: { type: "integer", default: 30, description: "Scale percentage (1-100)." }
+            } 
+        },
+      },
+      {
         name: "navigation",
         description: "Jump to a specific tab, workspace, or focus an object in the 3D view.",
         inputSchema: { 
@@ -280,6 +291,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case "get_screenshot":
         const screenRes = await runBodyTool("get_screenshot_of_window_as_image");
         return { content: [{ type: "text", text: JSON.stringify(screenRes, null, 2) }] };
+
+    case "get_fast_feedback":
+        const fastRes = await runBodyTool("get_fast_feedback", { 
+            output_path: args?.output_path || "critic_feedback.png",
+            resolution_scale: args?.resolution_scale || 30
+        });
+        return { content: [{ type: "text", text: JSON.stringify(fastRes, null, 2) }] };
 
     case "navigation":
         let navTool = "";
