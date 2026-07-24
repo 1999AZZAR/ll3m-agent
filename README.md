@@ -9,6 +9,8 @@ This project integrates the multi-agent reasoning framework from the LL3M resear
 ## Architecture and Origins
 
 The system is derived from two foundational concepts:
+
+![Blotcat plugging a cable connecting a large floating brain to a mechanical arm holding a 3D cube](assets/ll3m-illustrations/01-architecture.jpg)
 - **LL3M (Large Language 3D Modelers)**: A multi-agent methodology for 3D generation through interpretable Python code. [Source](https://github.com/threedle/ll3m)
 - **Blender Lab MCP**: The official vision for exposing Blender as a tool for large language models. [Documentation](https://www.blender.org/lab/mcp-server/)
 
@@ -16,12 +18,16 @@ The system is derived from two foundational concepts:
 
 ### Autonomous Modeling Pipeline
 The system implements a structured multi-agent loop to ensure geometric and physical accuracy:
+
+![Blotcat running inside a circular conveyor belt track between Plan, Write, and Execute stations](assets/ll3m-illustrations/02-pipeline.jpg)
 - **Planner**: Decomposes natural language requests into discrete geometric components and spatial requirements.
 - **Writer**: Translates modeling plans into modular Python scripts utilizing `bpy` and `bmesh`.
 - **Debugger**: Analyzes execution tracebacks and visual feedback to perform automated error correction.
 
 ### Local Retrieval-Augmented Generation (RAG)
 Integrated Python-based RST parser that provides agents with:
+
+![Blotcat fishing a puzzle piece with code out of a giant glowing book](assets/ll3m-illustrations/03-rag.jpg)
 - Fully qualified API signatures for `bpy` and `bmesh`.
 - Contextual usage examples extracted from official documentation.
 - Automatic truncation and navigation for large module references.
