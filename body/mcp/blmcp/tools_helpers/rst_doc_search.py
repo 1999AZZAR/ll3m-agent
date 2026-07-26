@@ -404,6 +404,15 @@ def search(
             # hit so the breadcrumb and title bonus reflect exactly
             # the scope of the merged cluster.
             hits[-1]["score"] += tfidf_score  # type: ignore[operator]
+            hi = min(len(paragraphs), idx + context + 1)
+            cluster_lo = hits[-1]["_lo"]
+            cluster_hi = hits[-1]["_hi"]
+            assert isinstance(cluster_lo, int)
+            assert isinstance(cluster_hi, int)
+            hits[-1]["_hi"] = max(cluster_hi, hi)
+            hits[-1]["text"] = "\n\n".join(
+                p[0] for p in paragraphs[cluster_lo:max(cluster_hi, hi)]
+            )
             last_idx = idx
             continue
         lo = max(0, idx - context)
@@ -420,6 +429,8 @@ def search(
             # so the correct section can be located. Stripped from
             # the public response below.
             "_seed_idx": idx,
+            "_lo": lo,
+            "_hi": hi,
             # Float during accumulation so fold additions do not
             # drift per-step; rounded once after the loop below.
             "score": tfidf_score + file_path_bonus + title_bonus,
@@ -495,9 +506,13 @@ def search(
             p[0] for p in paragraphs_full[lo:hi + 1]
         )
         hit.pop("_seed_idx", None)
+        hit.pop("_lo", None)
+        hit.pop("_hi", None)
         return {"hits": [hit], "truncated": False}
 
     # Strip internal fields from the public response.
     for hit in hits:
         hit.pop("_seed_idx", None)
+        hit.pop("_lo", None)
+        hit.pop("_hi", None)
     return {"hits": hits, "truncated": truncated}

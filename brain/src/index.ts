@@ -7,7 +7,7 @@ import {
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import net from "net";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -90,25 +90,32 @@ async function sendToBlender(code: string, strictJson: boolean = false): Promise
 async function runBodyTool(toolName: string, params: any = null): Promise<any> {
     const filePath = path.join(TOOLS_CODE_PATH, `${toolName}_toolcode.py`);
     let code = await fs.readFile(filePath, "utf8");
+
+    const includePattern = /^# @include_begin: (.+)\n[\s\S]*?^# @include_end\s*$/gm;
+    const includes = [...code.matchAll(includePattern)];
+    for (const include of includes) {
+      const includeCode = await fs.readFile(path.join(TOOLS_CODE_PATH, include[1]), "utf8");
+      code = code.replace(include[0], includeCode.trimEnd());
+    }
     
-    const paramsJson = JSON.stringify(params);
+    const paramsJson = JSON.stringify(JSON.stringify(params));
     code += `
 import json
 try:
-    params_dict = json.loads('${paramsJson}')
+    params_dict = json.loads(${paramsJson})
     if 'Params' in locals() or 'Params' in globals():
-        p = Params(**params_dict)
+        p = Params() if params_dict is None else Params(**params_dict)
     else:
         p = params_dict
-    result = main(p)
-    if callable(result):
-        res_data = {"status": "ok", "message": "Deferred task started"}
+    _rv = main(p)
+    if callable(_rv):
+        check_is_finished = _rv
+        result = {}
     else:
-        res_data = result._asdict() if hasattr(result, "_asdict") else result
-    print("__BLMCP_RESULT__" + json.dumps(res_data))
+        result = _rv._asdict() if hasattr(_rv, "_asdict") else _rv
 except Exception as e:
     import traceback
-    print("__BLMCP_RESULT__" + json.dumps({"status": "error", "message": str(e), "trace": traceback.format_exc()}))
+    result = {"status": "error", "message": str(e), "trace": traceback.format_exc()}
 `;
     return await sendToBlender(code, true);
 }
@@ -235,7 +242,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "get_api_docs":
       try {
-        const result = execSync(`${PYTHON_INTERPRETER} "${API_BRIDGE_PATH}" "${args?.identifier}"`, { encoding: "utf8" });
+        const result = execFileSync(PYTHON_INTERPRETER, [API_BRIDGE_PATH, String(args?.identifier)], {
+          encoding: "utf8",
+          timeout: 30_000,
+          maxBuffer: 4 * 1024 * 1024,
+        });
         return { content: [{ type: "text", text: result }] };
       } catch (e: any) {
         return { content: [{ type: "text", text: "Error fetching docs: " + e.message }] };
@@ -271,11 +282,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return { content: [{ type: "text", text: JSON.stringify(sceneRes, null, 2) }] };
 
     case "get_object_details":
-        const objRes = await runBodyTool("get_object_detail_summary", { object_name: args?.object_name });
+        const objRes = await runBodyTool("get_object_detail_summary", { name: args?.object_name });
         return { content: [{ type: "text", text: JSON.stringify(objRes, null, 2) }] };
 
     case "get_blendfile_summary":
-        const blendRes = await runBodyTool(`get_blendfile_summary_${args?.type}`);
+        const summaryTools: Record<string, string> = {
+          datablocks: "get_blendfile_summary_datablocks",
+          missing_files: "get_blendfile_summary_missing_files",
+          linked_libraries: "get_blendfile_summary_of_linked_libraries",
+          path_info: "get_blendfile_summary_path_info",
+          usage_guess: "get_blendfile_summary_usage_guess",
+        };
+        const blendRes = await runBodyTool(summaryTools[String(args?.type)]);
         return { content: [{ type: "text", text: JSON.stringify(blendRes, null, 2) }] };
 
     case "render_output":
@@ -285,19 +303,22 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
     case "save_blend":
         const copyFlag = args?.as_copy ? ", copy=True" : "";
-        const saveCode = `import bpy; bpy.ops.wm.save_as_mainfile(filepath='${args?.filepath}'${copyFlag})\nresult={"status":"saved"}`;
+        const filepath = JSON.stringify(String(args?.filepath));
+        const saveCode = `import bpy; bpy.ops.wm.save_as_mainfile(filepath=${filepath}${copyFlag})\nresult={"status":"saved"}`;
         const saveRes = await sendToBlender(saveCode, true);
         return { content: [{ type: "text", text: JSON.stringify(saveRes, null, 2) }] };
 
     case "get_screenshot":
-        const screenRes = await runBodyTool("get_screenshot_of_window_as_image");
+        const screenRes = await runBodyTool("get_screenshot_of_window_as_image", { size_limit_in_bytes: 0 });
         return { content: [{ type: "text", text: JSON.stringify(screenRes, null, 2) }] };
 
     case "get_fast_feedback":
-        const fastRes = await runBodyTool("get_fast_feedback", { 
-            output_path: args?.output_path || "critic_feedback.png",
-            resolution_scale: args?.resolution_scale || 30
-        });
+        const fastPath = JSON.stringify(String(args?.output_path || "critic_feedback.png"));
+        const scale = Math.min(100, Math.max(1, Number(args?.resolution_scale) || 30));
+        const fastRes = await sendToBlender(
+          `result = helpers.get_fast_feedback(${fastPath}, resolution_scale=${scale})`,
+          true,
+        );
         return { content: [{ type: "text", text: JSON.stringify(fastRes, null, 2) }] };
 
     case "navigation":

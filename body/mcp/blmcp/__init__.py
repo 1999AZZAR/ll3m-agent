@@ -15,8 +15,10 @@ __all__ = (
 
 import argparse
 import importlib
+import ipaddress
 import os
 import pkgutil
+import socket
 
 import yaml
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
@@ -76,6 +78,13 @@ def main() -> int:
         from starlette.applications import Starlette
         from starlette.middleware.cors import CORSMiddleware
 
+        try:
+            addresses = socket.getaddrinfo(args.host, args.port, type=socket.SOCK_STREAM)
+        except socket.gaierror as ex:
+            parser.error("cannot resolve HTTP host {!r}: {:s}".format(args.host, str(ex)))
+        if not addresses or any(not ipaddress.ip_address(item[4][0]).is_loopback for item in addresses):
+            parser.error("HTTP transport only accepts loopback bind addresses")
+
         transport = "streamable-http"
 
         mcp.settings.host = args.host
@@ -83,7 +92,7 @@ def main() -> int:
         mcp.settings.streamable_http_path = "/"
         mcp.settings.stateless_http = True
         mcp.settings.transport_security = TransportSecuritySettings(
-            enable_dns_rebinding_protection=False,
+            enable_dns_rebinding_protection=True,
         )
 
         # Add CORS middleware so browser-based clients
@@ -94,7 +103,7 @@ def main() -> int:
             app = _orig()
             app.add_middleware(
                 CORSMiddleware,
-                allow_origins=["*"],
+                allow_origin_regex=r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?",
                 allow_methods=["*"],
                 allow_headers=["*"],
             )

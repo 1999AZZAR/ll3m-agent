@@ -86,9 +86,13 @@ def send_code(code: str, strict_json: bool) -> dict[str, object]:
     # Parse only up to the first null byte delimiter.
     line, _sep, _rest = buf.partition(b"\0")
     try:
-        response: dict[str, object] = json.loads(line.decode("utf-8"))
+        response = json.loads(line.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as ex:
         raise ConnectionError(
             "Invalid response from Blender at {:s}:{:d}: {:s}".format(host, port, str(ex))
         ) from ex
+    if not isinstance(response, dict):
+        raise ConnectionError(
+            "Invalid response from Blender at {:s}:{:d}: expected a JSON object".format(host, port)
+        )
     return response

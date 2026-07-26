@@ -40,6 +40,7 @@ ENV/
 *.jpeg
 *.mp4
 *.zip
+!add_on/blender_mcp_addon-audited.zip
 
 # OS / IDE
 .DS_Store
@@ -48,3 +49,7 @@ Thumbs.db
 .idea/
 .env
 .geminiignore
+
+# Project Guardian
+memory.db
+memory.db-journal

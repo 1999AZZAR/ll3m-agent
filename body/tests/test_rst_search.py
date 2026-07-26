@@ -545,6 +545,36 @@ class TestBreadcrumb(unittest.TestCase):
             "Outer > Inner",
         )
 
+    def test_cluster_merge_extends_text_through_later_match(self) -> None:
+        content = _rst_section(
+            "Section",
+            (
+                "unique_match_needle first.\n\n"
+                "Bridge paragraph.\n\n"
+                "unique_match_needle second.\n"
+            ),
+        )
+        with _synthetic_corpus({"manual/a.rst": content}):
+            result = _search(
+                query="unique_match_needle", scope="manual", context=1,
+            )
+        self.assertEqual(len(result["hits"]), 1)
+        self.assertIn("first", result["hits"][0]["text"])
+        self.assertIn("second", result["hits"][0]["text"])
+
+    def test_empty_sibling_title_does_not_leak(self) -> None:
+        content = (
+            "Alpha\n=====\n\n"
+            "Beta\n====\n\n"
+            "unique_match_needle body.\n"
+        )
+        with _synthetic_corpus({"manual/a.rst": content}):
+            result = _search(query="unique_match_needle", scope="manual")
+            leaked = _search(query="alpha", scope="manual")
+        self.assertEqual(result["hits"][0]["breadcrumb"], "Beta")
+        self.assertNotIn("Alpha", result["hits"][0]["text"])
+        self.assertEqual(leaked["hits"], [])
+
     def test_adjacent_sibling_sections_do_not_fold(self) -> None:
         """
         Two matches at adjacent paragraph indices but in sibling

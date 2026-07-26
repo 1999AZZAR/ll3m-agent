@@ -14,7 +14,7 @@ The system is derived from two foundational concepts:
 - **LL3M (Large Language 3D Modelers)**: A multi-agent methodology for 3D generation through interpretable Python code. [Source](https://github.com/threedle/ll3m)
 - **Blender Lab MCP**: The official vision for exposing Blender as a tool for large language models. [Documentation](https://www.blender.org/lab/mcp-server/)
 
-## System Capabilities (v3.1)
+## System Capabilities (v4.2)
 
 ### Autonomous Modeling Pipeline
 The system implements a structured multi-agent loop to ensure geometric and physical accuracy:
@@ -46,17 +46,54 @@ Integrated Python-based RST parser that provides agents with:
 ## Installation and Setup
 
 ### 1. MCP Configuration
-Register the server in your configuration (e.g., `~/.claude.json`):
+Install and build the TypeScript server:
+
+```bash
+cd /path/to/ll3m-agent/brain
+npm install
+npm run build
+```
+
+Register the built server in your MCP client configuration (for example, `~/.claude.json`):
+
 ```json
-"ll3m": {
-  "command": "node",
-  "args": ["/path/to/ll3m-agent/brain/dist/index.js"]
+{
+  "mcpServers": {
+    "ll3m": {
+      "command": "node",
+      "args": ["/path/to/ll3m-agent/brain/dist/index.js"]
+    }
+  }
 }
 ```
 
+Restart the MCP client after changing its configuration.
+
 ### 2. Blender Add-on
-- Install the add-on located in `body/addon/blender_mcp_addon/`.
-- Enable "Start Server" within the add-on preferences (Default Port: 9876).
+
+Install the packaged add-on at:
+
+`add_on/blender_mcp_addon-audited.zip`
+
+In Blender 5.2 or later:
+
+1. Open **Edit > Preferences > Add-ons**.
+2. Open the add-on menu in the upper-right and choose **Install from Disk**.
+3. Select `add_on/blender_mcp_addon-audited.zip`. Install the ZIP directly; do not extract it first.
+4. Enable the add-on named **MCP**.
+5. Expand its preferences and keep **Host** set to `localhost` and **Port** set to `9876`.
+6. Click **Start Server** and leave Blender open while using LL3M.
+
+The bridge intentionally accepts loopback connections only because MCP tools can execute Python inside Blender. Do not expose port `9876` to a network.
+
+### 3. Verify the Connection
+
+Ask the MCP client to call `get_scene_summary`. A successful response reports the active scene, workspace, and objects. If the connection fails:
+
+- Confirm Blender is running and **Start Server** was clicked.
+- Confirm no other Blender instance is already using port `9876`.
+- Confirm the MCP client was restarted after configuration changes.
+- Rebuild `brain/dist` after changing TypeScript source.
 
 ## Operation
 

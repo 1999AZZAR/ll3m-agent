@@ -546,6 +546,7 @@ def _walk_paragraphs_with_sections(
             # it on the stack (for breadcrumb) and into pending_titles
             # (for merge-into-next-content). Remaining children are
             # visited without re-processing the title.
+            pending_start = len(pending_titles)
             title_node = None
             for child in node.children:
                 if isinstance(child, docutils.nodes.title):
@@ -563,6 +564,7 @@ def _walk_paragraphs_with_sections(
                 yield from _emit(child)
             if pushed:
                 section_stack.pop()
+            del pending_titles[pending_start:]
             return
         if isinstance(node, docutils.nodes.title):
             # Standalone title outside a section wrapper; fall back

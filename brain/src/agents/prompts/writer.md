@@ -14,19 +14,22 @@ import bpy
 import bmesh
 
 def create_smooth_part():
-    # Use bmesh for topology control
+    mesh = bpy.data.meshes.new("SmoothPartMesh")
+    obj = bpy.data.objects.new("SmoothPart", mesh)
+    bpy.context.collection.objects.link(obj)
     bm = bmesh.new()
-    bmesh.ops.create_cube(bm, size=1.0)
-    # ... topology edits
-    bm.to_mesh(mesh_data)
-    # Add Modifier
+    try:
+        bmesh.ops.create_cube(bm, size=1.0)
+        bm.to_mesh(mesh)
+    finally:
+        bm.free()
     subsurf = obj.modifiers.new(name="Subsurf", type='SUBSURF')
     subsurf.levels = 2
-    pass
+    return obj
 
 def main():
-    create_smooth_part()
-    result = {"status": "High-fidelity component created"}
+    obj = create_smooth_part()
+    return {"status": "ok", "object": obj.name}
 
-main()
+result = main()
 ```

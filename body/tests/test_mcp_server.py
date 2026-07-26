@@ -692,7 +692,7 @@ class TestMainConfiguration(unittest.TestCase):
             mock.patch.object(
                 sys,
                 "argv",
-                ["blmcp", "--transport", "http", "--host", "0.0.0.0", "--port", "8123"],
+                ["blmcp", "--transport", "http", "--host", "127.0.0.1", "--port", "8123"],
             ),
             mock.patch.object(blmcp, "FastMCP", return_value=mcp_instance),
             mock.patch.object(blmcp.pkgutil, "iter_modules", return_value=[]),
@@ -708,7 +708,7 @@ class TestMainConfiguration(unittest.TestCase):
             result = blmcp.main()
 
         self.assertEqual(result, 0)
-        self.assertEqual(mcp_instance.settings.host, "0.0.0.0")
+        self.assertEqual(mcp_instance.settings.host, "127.0.0.1")
         self.assertEqual(mcp_instance.settings.port, 8123)
         self.assertEqual(mcp_instance.settings.streamable_http_path, "/")
         self.assertTrue(mcp_instance.settings.stateless_http)
@@ -718,7 +718,7 @@ class TestMainConfiguration(unittest.TestCase):
         )
         self.assertEqual(
             mcp_instance.settings.transport_security.kwargs,
-            {"enable_dns_rebinding_protection": False},
+            {"enable_dns_rebinding_protection": True},
         )
         mcp_instance.run.assert_called_once_with(transport="streamable-http")
 
@@ -730,13 +730,27 @@ class TestMainConfiguration(unittest.TestCase):
                 (
                     FakeCORSMiddleware,
                     {
-                        "allow_origins": ["*"],
+                        "allow_origin_regex": r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?",
                         "allow_methods": ["*"],
                         "allow_headers": ["*"],
                     },
                 ),
             ],
         )
+
+    def test_main_rejects_non_loopback_http_host(self) -> None:
+        blmcp = _import_blmcp_module()
+        with (
+            mock.patch.object(
+                sys,
+                "argv",
+                ["blmcp", "--transport", "http", "--host", "0.0.0.0"],
+            ),
+            mock.patch.object(blmcp, "FastMCP"),
+            mock.patch.object(blmcp.pkgutil, "iter_modules", return_value=[]),
+            self.assertRaises(SystemExit),
+        ):
+            blmcp.main()
 
 
 class TestGetPythonAPIDocs(unittest.TestCase):

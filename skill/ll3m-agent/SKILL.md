@@ -1,28 +1,39 @@
-# LL3M Agent Skill (v3.2)
+---
+name: ll3m agent skill
+version: "4.2"
+description: Expert autonomous 3D modeling assistant for Blender, specialized in high-fidelity clone generation via recursive iteration.
+tags: [blender, 3d-modeling, recursive-iteration, autonomous]
+---
 
-Expert autonomous 3D modeling assistant for **Blender**, specialized in high-fidelity asset generation.
+# LL3M Agent Skill (v4.2)
 
-## High-Fidelity Workflow
+Expert autonomous 3D modeling assistant for **Blender**, specialized in high-fidelity "Perfect Clone" generation using **Recursive Iteration**.
 
-Follow this multi-agent loop to move beyond basic primitives toward realistic "perfect clones" of everyday objects:
+## Recursive Modeling Workflow
 
-1.  **PLAN**: Use `generate_modeling_plan`. Identify which parts require **Subdivision Surface (SubD)** for smoothness and which are **Hard Surface**.
-2.  **RETRIEVE (Patterns)**: Use `get_modeling_patterns`. Fetch technical blueprints for:
-    *   `rounded_corners`: Catch highlights realistically.
-    *   `ergonomic_curves`: Complex tapering and sweeping.
-    *   `subd_topology`: Clean quad-based edge flow.
-    *   `realistic_materials`: Advanced PBR node setups (Clearcoat, Sheen).
-3.  **RETRIEVE (Helpers)**: Use `get_blender_helpers`. These are pre-baked Python functions available in the Blender environment (accessible via the `helpers` namespace, e.g., `helpers.setup_pbr()`).
-4.  **RETRIEVE (API)**: Use `get_api_docs` for specialized operations not covered by helpers.
-5.  **WRITE**: Generate code using the `writer` persona. **Always prefer `helpers` functions** to reduce code length and errors.
-    *   Example: `helpers.setup_pbr("Steel", metallic=1.0)` is safer than manual node creation.
-6.  **EXECUTE**: Send code via `execute_blender_code`.
-6.  **CRITIQUE**: Use `get_screenshot` and `render_output`. Refine until the model matches the "Real-World Clone" standard.
+Follow this loop until the model is physically and semantically perfect:
+
+### 1. Initialization (Stage I)
+- **PLAN**: Architect components.
+- **WRITE**: Generate base topology and PBR materials.
+- **EXECUTE**: Create the initial scene.
+
+### 2. The Auto-Iteration Loop (Stage II & IV)
+- **CAPTURE**: Use `get_fast_feedback` for rapid, low-compute verification.
+- **CRITIQUE**: Use the `critic` persona to generate a **Quality Score** and a **Geometric Delta**.
+- **RECURSE**:
+    - **IF Quality Score < 90**:
+        1. Apply fixes using `execute_staged_refinement`.
+        2. Update Blender HUD with `helpers.draw_agent_hud(message="Refining: Iteration X")`.
+        3. **REPEAT** the CAPTURE -> CRITIQUE step.
+    - **IF Quality Score >= 90**:
+        1. Proceed to Finalization.
+
+### 3. Finalization (Stage III)
+- **HI-FI**: Use `get_modeling_patterns` for final bevels and SubD.
+- **RENDER**: Execute `render_output` for the final beauty shot.
 
 ## Technical Standards
-- **Topology**: Prioritize quad meshes. Avoid triangles and poles on curved surfaces.
-- **Modifiers**: Use `SUBSURF` (Level 2+) for all organic shapes. Use `BEVEL` for all hard edges.
-- **Shading**: Use **Auto Smooth** or **Weighted Normals** to ensure perfect light reflection.
-
-## scene Intelligence
-Use `get_scene_summary` and `get_object_details` to verify the technical integrity of the generated geometry (vertex counts, modifier stacks).
+- **Loop Limit**: Max 3 iterations for minor objects, 5 for complex clones.
+- **Physics**: Mandatory use of `helpers.run_gravity_settle()` or `helpers.snap_to_surface()` during the loop.
+- **Persistence**: Always `save_blend` after a successful >=90 score.

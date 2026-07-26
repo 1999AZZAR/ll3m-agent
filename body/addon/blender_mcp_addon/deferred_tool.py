@@ -78,16 +78,17 @@ _deferred_clients: list[_DeferredClient] = []
 def _send_and_close(dc: _DeferredClient, response: dict[str, object]) -> None:
     try:
         dc.conn.sendall(_encode_response(response))
-    except OSError:
+    except (OSError, TypeError, ValueError):
         pass
-    try:
-        dc.conn.close()
-    except OSError:
-        pass
-    try:
-        _deferred_clients.remove(dc)
-    except ValueError:
-        pass
+    finally:
+        try:
+            dc.conn.close()
+        except OSError:
+            pass
+        try:
+            _deferred_clients.remove(dc)
+        except ValueError:
+            pass
 
 
 def _is_disconnected(conn: socket.socket) -> bool:
@@ -184,6 +185,8 @@ def poll() -> bool:
                 })
                 did_work = True
                 continue
+        else:
+            result = json.loads(json.dumps(result, default=repr))
 
         # Build the final response with the standard envelope.
         response: dict[str, object] = {"status": "ok", "result": result}

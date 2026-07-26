@@ -27,13 +27,15 @@ __all__ = (
 )
 
 import json
+import ipaddress
+import importlib
 import math
 import select
 import socket
 import sys
 import traceback
 from collections.abc import Callable
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 DEFAULT_HOST = "localhost"
 DEFAULT_PORT = 9876
@@ -216,6 +218,8 @@ def _execute_code(
     from .capture_output import CaptureOutput
     from .weak_sandbox import WeakSandboxForLLM
     from . import blmcp_helpers
+    bmesh = importlib.import_module("bmesh")
+    bpy = importlib.import_module("bpy")
 
     # Provide common modules and helpers in the namespace to prevent 'undefined' errors
     namespace: dict[str, object] = {
@@ -240,7 +244,7 @@ def _execute_code(
     # Check for a deferred response (background job in progress).
     check_fn_raw = namespace.get("check_is_finished")
     if check_fn_raw is not None and callable(check_fn_raw):
-        check_fn: Callable[[], dict[str, object] | None] = check_fn_raw
+        check_fn = cast(Callable[[], dict[str, object] | None], check_fn_raw)
         response = {}
         if captured.stdout:
             response["stdout"] = captured.stdout
@@ -571,6 +575,13 @@ def start(host: str, port: int) -> None:
     """
     if is_running():
         raise RuntimeError("Server is already running")
+
+    try:
+        addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except socket.gaierror as ex:
+        raise ValueError("Cannot resolve host {!r}".format(host)) from ex
+    if not addresses or any(not ipaddress.ip_address(item[4][0]).is_loopback for item in addresses):
+        raise ValueError("Blender MCP only accepts loopback bind addresses")
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:

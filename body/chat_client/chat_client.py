@@ -29,6 +29,7 @@ import argparse
 import asyncio
 import json
 import os
+import shlex
 import urllib.error
 import urllib.request
 
@@ -36,6 +37,8 @@ from typing import Any
 
 from mcp import ClientSession, StdioServerParameters  # pylint: disable=import-error,no-name-in-module
 from mcp.client.stdio import stdio_client  # pylint: disable=import-error,no-name-in-module
+
+_HTTP_TIMEOUT = 60.0
 
 
 # ---------------------------------------------------------------------------
@@ -63,7 +66,7 @@ def _api_chat_completions(
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT) as resp:
         result: dict[str, Any] = json.loads(resp.read().decode())
         return result
 
@@ -120,7 +123,7 @@ def _api_claude_messages(
         },
         method="POST",
     )
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, timeout=_HTTP_TIMEOUT) as resp:
         result: dict[str, Any] = json.loads(resp.read().decode())
         return result
 
@@ -144,10 +147,11 @@ def _mcp_tools_to_claude(mcp_tools: list[dict[str, Any]]) -> list[dict[str, Any]
 #   (assistant_message, tool_calls, text_reply, turn_done)
 #
 # - assistant_message: dict to append to the conversation history.
-# - tool_calls: list of (id, name, arguments_dict) tuples.
+# - tool_calls: list of (id, name, arguments_dict, parse_error) tuples.
 # - text_reply: optional text to display.
 # - turn_done: True when the LLM considers the turn finished.
-_ResponseTuple = tuple[dict[str, Any], list[tuple[str, str, dict[str, Any]]], str | None, bool]
+_ToolCall = tuple[str, str, dict[str, Any] | None, str | None]
+_ResponseTuple = tuple[dict[str, Any], list[_ToolCall], str | None, bool]
 
 
 def _process_openai_response(response: dict[str, Any]) -> _ResponseTuple:
@@ -156,16 +160,19 @@ def _process_openai_response(response: dict[str, Any]) -> _ResponseTuple:
     msg = choice["message"]
     finish_reason = choice.get("finish_reason", "")
 
-    tool_calls: list[tuple[str, str, dict[str, Any]]] = []
+    tool_calls: list[_ToolCall] = []
     raw_tool_calls = msg.get("tool_calls")
     if raw_tool_calls:
         for tc in raw_tool_calls:
             fn = tc["function"]
             try:
                 args = json.loads(fn["arguments"])
-            except (json.JSONDecodeError, TypeError):
-                args = {}
-            tool_calls.append((tc["id"], fn["name"], args))
+                if not isinstance(args, dict):
+                    raise TypeError("tool arguments must decode to an object")
+            except (json.JSONDecodeError, TypeError) as ex:
+                tool_calls.append((tc["id"], fn["name"], None, str(ex)))
+            else:
+                tool_calls.append((tc["id"], fn["name"], args, None))
 
     text = msg.get("content") or None
     done = finish_reason != "tool_calls" and not tool_calls
@@ -177,14 +184,18 @@ def _process_claude_response(response: dict[str, Any]) -> _ResponseTuple:
     content = response.get("content", [])
     stop_reason = response.get("stop_reason", "")
 
-    tool_calls: list[tuple[str, str, dict[str, Any]]] = []
+    tool_calls: list[_ToolCall] = []
     text_parts: list[str] = []
 
     for block in content:
         if block["type"] == "text":
             text_parts.append(block["text"])
         elif block["type"] == "tool_use":
-            tool_calls.append((block["id"], block["name"], block.get("input", {})))
+            args = block.get("input", {})
+            if isinstance(args, dict):
+                tool_calls.append((block["id"], block["name"], args, None))
+            else:
+                tool_calls.append((block["id"], block["name"], None, "tool input must be an object"))
 
     # Build the assistant message to store in history.
     assistant_msg: dict[str, Any] = {"role": "assistant", "content": content}
@@ -201,8 +212,8 @@ async def _call_tool(
     session: ClientSession,
     name: str,
     arguments: dict[str, Any],
-) -> str:
-    """Call an MCP tool and return a text summary of the result."""
+) -> tuple[str, bool]:
+    """Call an MCP tool and return its text summary and error state."""
     result = await session.call_tool(name, arguments)
     parts: list[str] = []
     for item in result.content:
@@ -214,8 +225,8 @@ async def _call_tool(
             parts.append("[{:s}]".format(item.type))
     text = "\n".join(parts)
     if result.isError:
-        return "ERROR: {:s}".format(text)
-    return text
+        return "ERROR: {:s}".format(text), True
+    return text, False
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +254,9 @@ async def _run(
         value = os.environ.get(key)
         if value is not None:
             env[key] = value
-    parts = server_command.split()
+    parts = shlex.split(server_command)
+    if not parts:
+        raise ValueError("Server command must not be empty")
     params = StdioServerParameters(command=parts[0], args=parts[1:], env=env or None)
 
     async with stdio_client(params) as (read, write):
@@ -311,8 +324,8 @@ async def _run(
                 while True:
                     try:
                         if provider == "openai":
-                            response = _api_chat_completions(
-                                api_url, messages, llm_tools, model,
+                            response = await asyncio.to_thread(
+                                _api_chat_completions, api_url, messages, llm_tools, model,
                             )
                         else:
                             assert api_key is not None
@@ -322,9 +335,8 @@ async def _run(
                                 "max_tokens": opts.get("max_tokens", 4096),
                                 "system": system_text,
                             }
-                            response = _api_claude_messages(
-                                api_url, api_key, messages, llm_tools,
-                                claude_opts,
+                            response = await asyncio.to_thread(
+                                _api_claude_messages, api_url, api_key, messages, llm_tools, claude_opts,
                             )
                     except urllib.error.URLError as ex:
                         print("HTTP error: {:s}".format(str(ex)))
@@ -344,11 +356,13 @@ async def _run(
 
                     if tool_calls:
                         if provider == "openai":
-                            for tc_id, tc_name, tc_args in tool_calls:
+                            for tc_id, tc_name, tc_args, parse_error in tool_calls:
                                 print("  -> calling {:s}".format(tc_name))
-                                result_text = await _call_tool(
-                                    session, tc_name, tc_args,
-                                )
+                                if parse_error is None:
+                                    assert tc_args is not None
+                                    result_text, _is_error = await _call_tool(session, tc_name, tc_args)
+                                else:
+                                    result_text = "ERROR: Invalid tool arguments: {:s}".format(parse_error)
                                 messages.append({
                                     "role": "tool",
                                     "tool_call_id": tc_id,
@@ -356,16 +370,22 @@ async def _run(
                                 })
                         else:
                             tool_results: list[dict[str, Any]] = []
-                            for tc_id, tc_name, tc_args in tool_calls:
+                            for tc_id, tc_name, tc_args, parse_error in tool_calls:
                                 print("  -> calling {:s}".format(tc_name))
-                                result_text = await _call_tool(
-                                    session, tc_name, tc_args,
-                                )
-                                tool_results.append({
+                                if parse_error is None:
+                                    assert tc_args is not None
+                                    result_text, is_error = await _call_tool(session, tc_name, tc_args)
+                                else:
+                                    result_text = "Invalid tool arguments: {:s}".format(parse_error)
+                                    is_error = True
+                                tool_result: dict[str, Any] = {
                                     "type": "tool_result",
                                     "tool_use_id": tc_id,
                                     "content": result_text,
-                                })
+                                }
+                                if is_error:
+                                    tool_result["is_error"] = True
+                                tool_results.append(tool_result)
                             messages.append({
                                 "role": "user",
                                 "content": tool_results,
