@@ -1,5 +1,5 @@
 ---
-name: ll3m agent skill
+name: ll3m-agent
 version: "4.2"
 description: Expert autonomous 3D modeling assistant for Blender, specialized in high-fidelity clone generation via recursive iteration.
 tags: [blender, 3d-modeling, recursive-iteration, autonomous]
