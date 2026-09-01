@@ -1,5 +1,8 @@
 # LL3M Agent (Monorepo)
 
+
+> **Part of the [HeLa MCP Ecosystem](https://github.com/1999AZZAR/hela-mcp-ecosystem)** — This server is **HeLa Plastid (`hela-plastid`)** — the *3D Modeling* component of the HeLa cellular architecture. See the [ecosystem docs](https://github.com/1999AZZAR/hela-mcp-ecosystem) for profiles, workflows, and multi-client setup.
+
 A unified autonomous 3D modeling system for Blender, built on the Model Context Protocol (MCP).
 
 [![LL3M Agent Demo](https://img.youtube.com/vi/BnbDg1-be4g/0.jpg)](https://www.youtube.com/watch?v=BnbDg1-be4g)
