@@ -1,7 +1,7 @@
 # LL3M Agent (Monorepo)
 
 
-> **Part of the [HeLa MCP Ecosystem](https://github.com/1999AZZAR/hela-mcp-ecosystem)** — This server is **HeLa Plastid (`hela-plastid`)** — the *3D Modeling* component of the HeLa cellular architecture. See the [ecosystem docs](https://github.com/1999AZZAR/hela-mcp-ecosystem) for profiles, workflows, and multi-client setup.
+> **Part of the [HeLa MCP Ecosystem](https://github.com/1999AZZAR/hela-hela-mcp-ecosystem)** — This server is **HeLa Plastid (`hela-plastid`)** — the *3D Modeling* component of the HeLa cellular architecture. See the [ecosystem docs](https://github.com/1999AZZAR/hela-hela-mcp-ecosystem) for profiles, workflows, and multi-client setup.
 
 A unified autonomous 3D modeling system for Blender, built on the Model Context Protocol (MCP).
 
@@ -52,7 +52,7 @@ Integrated Python-based RST parser that provides agents with:
 Install and build the TypeScript server:
 
 ```bash
-cd /path/to/ll3m-agent/brain
+cd /path/to/ll3m-mcp/brain
 npm install
 npm run build
 ```
@@ -64,7 +64,7 @@ Register the built server in your MCP client configuration (for example, `~/.cla
   "mcpServers": {
     "ll3m": {
       "command": "node",
-      "args": ["/path/to/ll3m-agent/brain/dist/index.js"]
+      "args": ["/path/to/ll3m-mcp/brain/dist/index.js"]
     }
   }
 }
@@ -101,6 +101,6 @@ Ask the MCP client to call `get_scene_summary`. A successful response reports th
 ## Operation
 
 Execute the modeling loop by providing a technical or descriptive request:
-> "Use the ll3m-agent skill to generate a minimalist industrial interior with a glass-top table."
+> "Use the ll3m-mcp skill to generate a minimalist industrial interior with a glass-top table."
 
 The system will proceed through the PLAN → RETRIEVE → WRITE → EXECUTE cycle automatically.
